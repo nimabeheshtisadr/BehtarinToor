@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>چرخ شانس پفکی با چراغ و صدا 🎡</title>
+  <style>
+    @font-face {
+      font-family: 'VazirBold';
+      src: url('https://cdn.fontcdn.ir/Font/Persian/Vazir/Vazir-Bold.woff2');
+    }
+    body {
+      font-family: 'VazirBold', sans-serif;
+      direction: rtl;
+      text-align: center;
+      background: radial-gradient(circle at center, #0410a0, #01044a);
+      height: 100vh;
+      margin: 0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+    h2 {
+      color: #ffffff;
+      font-size: 2.5em;
+      text-shadow: 3px 3px 0 #ff0f27, 5px 5px 0 rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+    .wheel-container {
+      position: relative;
+      width: 90vw;
+      max-width: 500px;
+    }
+    canvas {
+      width: 100%;
+      height: auto;
+      background: #ff0000;
+      border-radius: 50%;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+      display: block;
+    }
+    .center-logo {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      border: 5px solid white;
+      z-index: 5;
+      object-fit: cover;
+    }
+    button {
+      margin-top: 25px;
+      font-size: 1.8em;
+      padding: 15px 40px;
+      border: none;
+      border-radius: 50px;
+      background: #ffffff;
+      color: #000;
+      cursor: pointer;
+      font-family: 'VazirBold';
+      box-shadow: 0 5px 15px rgba(255, 82, 82, 0.4);
+      transition: 0.3s;
+    }
+    button:hover { transform: translateY(-3px); }
+    button:disabled { background: #bdbdbd; cursor: not-allowed; }
+    .win-message {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(255,255,255,0.95);
+      padding: 20px;
+      border-radius: 15px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.3);
+      display: none;
+      text-align: center;
+      z-index: 10;
+    }
+    .win-message h3 { color: #d32f2f; margin: 0; font-size: 1.6em; }
+    .win-message p { font-size: 2em; margin: 10px 0; }
+  </style>
+</head>
+<body>
+  <h2>🎡 بهترین تور 🎁</h2>
+
+  <div class="wheel-container">
+    <canvas id="wheelCanvas" width="500" height="500"></canvas>
+    <img src="logo.png" class="center-logo" alt="">
+    <div id="winMessage" class="win-message">
+      <h3>نتیجه شانست 🎉</h3>
+      <p id="prizeText"></p>
+      <p>📸 عکس بگیر و بفرست برامون!</p>
+    </div>
+  </div>
+
+  <button id="spinButton">بچرخون</button>
+
+  <audio id="spinSound" preload="auto">
+    <source src="spin.mp3" type="audio/mpeg">
+  </audio>
+  <audio id="winSound" preload="auto">
+    <source src="win.mp3" type="audio/mpeg">
+  </audio>
+
+  <script>
+    const items = [
+      { name: 'جوک بگو', weight: 30, color: '#e810a7' },
+      { name: 'پوچ ', weight: 5, color: '#2fb320' },
+      { name: 'آواز بخون ', weight: 30, color: '#10b2e8' },
+      { name: 'پوج ', weight: 5, color: '#c010e8' },
+      { name: 'گشت رایگان ', weight: 1, color: '#e89210' },
+      { name: 'پوچ ', weight: 9, color: '#19700f' },
+      { name: 'شانس مجدد ', weight: 20, color: '#D4A5A5' }
+    ];
+
+    const canvas = document.getElementById("wheelCanvas");
+    const ctx = canvas.getContext("2d");
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const radius = 200;
+    const anglePerSegment = (2 * Math.PI) / items.length;
+
+    let startAngle = 0;
+    let spinning = false;
+    let hasSpun = false;
+    const spinButton = document.getElementById("spinButton");
+    const winMessage = document.getElementById("winMessage");
+    const prizeText = document.getElementById("prizeText");
+    const spinSound = document.getElementById("spinSound");
+    const winSound = document.getElementById("winSound");
+
+    function drawWheel() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.save();
+      ctx.translate(centerX, centerY);
+      ctx.rotate(startAngle);
+
+      for (let i = 0; i < items.length; i++) {
+        const start = i * anglePerSegment;
+        const end = start + anglePerSegment;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.arc(0, 0, radius, start, end);
+        ctx.fillStyle = items[i].color;
+        ctx.fill();
+        ctx.strokeStyle = "#fff";
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        ctx.save();
+        ctx.rotate(start + anglePerSegment / 2);
+        ctx.textAlign = "center";
+        ctx.font = "bold 22px 'VazirBold'";
+        ctx.fillStyle = "#0a0a0a";
+        ctx.fillText(items[i].name, radius * 0.7, 8);
+        ctx.restore();
+      }
+
+      // 💡 چراغ‌ها
+      for (let i = 0; i < items.length; i++) {
+        const angle = i * anglePerSegment;
+        const lightRadius = radius + 18;
+        const x = Math.cos(angle + anglePerSegment / 2) * lightRadius;
+        const y = Math.sin(angle + anglePerSegment / 2) * lightRadius;
+
+        const gradient = ctx.createRadialGradient(x, y, 2, x, y, 10);
+        gradient.addColorStop(0, "#fff700");
+        gradient.addColorStop(0.4, "#ffeb3b");
+        gradient.addColorStop(1, "rgba(255,255,0,0.2)");
+
+        ctx.beginPath();
+        ctx.arc(x, y, 8, 0, 2 * Math.PI);
+        ctx.fillStyle = gradient;
+        ctx.fill();
+      }
+
+      ctx.restore();
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, 30, 0, 2 * Math.PI);
+      ctx.fillStyle = "#8a8786";
+      ctx.fill();
+      ctx.strokeStyle = "#fff";
+      ctx.lineWidth = 5;
+      ctx.stroke();
+    }
+
+    function weightedRandom(items) {
+      const totalWeight = items.reduce((sum, i) => sum + i.weight, 0);
+      let rand = Math.random() * totalWeight;
+      for (let i of items) {
+        if (rand < i.weight) return i;
+        rand -= i.weight;
+      }
+    }
+
+    function spinWheel() {
+      if (spinning || hasSpun) return;
+      spinning = true;
+      spinButton.disabled = true;
+      winMessage.style.display = "none";
+
+      spinSound.currentTime = 0;
+      spinSound.play().catch(()=>{});
+
+      const selected = weightedRandom(items);
+      const index = items.findIndex(i => i.name === selected.name);
+      const targetAngle = (index * anglePerSegment) + (anglePerSegment / 2);
+      const current = startAngle % (2 * Math.PI);
+      const rotations = 10;
+      const totalRotation = (rotations * 2 * Math.PI) + (2 * Math.PI - current - targetAngle);
+      const duration = 5000;
+      const startTime = performance.now();
+
+      function animate(time) {
+        const elapsed = time - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const easing = t => (t < 0.7 ? t / 0.7 : 0.7 + (1 - Math.pow(1 - ((t - 0.7) / 0.3), 4)) * 0.3);
+        startAngle = totalRotation * easing(progress);
+        drawWheel();
+
+        if (progress < 1) requestAnimationFrame(animate);
+        else {
+          startAngle = 2 * Math.PI - targetAngle;
+          drawWheel();
+          spinning = false;
+          hasSpun = true;
+          spinSound.pause();
+          winSound.play().catch(()=>{});
+          prizeText.textContent = selected.name;
+          winMessage.style.display = "block";
+        }
+      }
+
+      requestAnimationFrame(animate);
+    }
+
+    spinButton.addEventListener('click', spinWheel);
+    document.body.addEventListener('click', () => {
+      spinSound.volume = 0.5;
+      winSound.volume = 0.7;
+    }, { once: true });
+
+    drawWheel();
+  </script>
+</body>
+</html>
